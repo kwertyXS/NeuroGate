@@ -1,0 +1,3 @@
+headers = pcap.h
+compilerOpts = -IInclude
+linkerOpts = -lwpcap -lPacket
