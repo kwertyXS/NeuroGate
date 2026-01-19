@@ -1,0 +1,4 @@
+headers = pcap.h
+headerFilter = pcap.*
+libraryPaths = C:\\Windows\\System32
+linkerOpts = -lwpcap -lPacket
