@@ -1,66 +1,41 @@
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
-
-kotlin {
-    mingwX64("windows") {
-        binaries {
-            executable {
-                entryPoint = "main"
-            }
-        }
-
-        compilations.getByName("main") {
-            cinterops {
-                val pcap by creating {
-                    defFile("src/nativeInterop/cinterop/pcap.def")
-                    includeDirs("src/nativeInterop/cinterop/includes")
-                }
-            }
-        }
-    }
-
-
-    sourceSets {
-        val windowsMain by getting
-        val windowsTest by getting
-    }
-}
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
 }
 
 kotlin {
+    // --- Конфигурация для Windows ---
     mingwX64("windows") {
         binaries.all {
+            // Указываем линковщику путь к 64-битным библиотекам
             linkerOpts.add("-L${project.projectDir}/src/nativeInterop/cinterop/Lib/x64")
         }
-
         binaries.executable {
             entryPoint = "main"
         }
-
         compilations.getByName("main") {
             cinterops {
                 val pcap by creating {
                     defFile("src/nativeInterop/cinterop/pcap.def")
-                    // ВОЗВРАЩАЕМ ЭТУ СТРОКУ: Указываем, где лежат заголовочные файлы.
+                    // Указываем cinterop, где искать заголовочные файлы
                     includeDirs("src/nativeInterop/cinterop/Include")
                 }
             }
         }
     }
 
+    // --- Остальные платформы ---
     jvm()
-
     js {
         browser()
     }
-
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
         browser()
     }
 
+    // --- Общие зависимости ---
     sourceSets {
         val windowsMain by getting
         val windowsTest by getting
