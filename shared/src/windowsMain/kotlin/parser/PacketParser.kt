@@ -35,7 +35,14 @@ private class tcp_header(rawPtr: NativePtr) : CStructVar(rawPtr) {
     var th_offx2: UByte
         get() = memberAt<UByteVar>(12).value
         set(value) { memberAt<UByteVar>(12).value = value }
-    val th_flags: UByte get() = (th_offx2.toInt() and 0x3F).toUByte()
+    val th_flags: UByte
+        get() = memberAt<UByteVar>(13).value
+    var th_win: UShort
+        get() = memberAt<UShortVar>(14).value
+        set(value) { memberAt<UShortVar>(14).value = value }
+
+    val th_off: Int get() = (th_offx2.toInt() shr 4)
+
     companion object : CStructVar.Type(20, 4)
 }
 
@@ -76,28 +83,35 @@ object PacketParser {
         val transportPacketPtr = (ipPacketPtr + ipHeaderLength)!!
         var sourcePort = 0
         var destPort = 0
+        var transportHeaderLength = 0
+        var tcpWindowSize = 0
         var tcpFlags = TcpFlags()
 
         when (protocol) {
             IPPROTO_TCP -> {
                 if (packetSize < ETHERNET_HEADER_SIZE + ipHeaderLength + sizeOf<tcp_header>()) return null
                 val tcpHeader = transportPacketPtr.reinterpret<tcp_header>().pointed
+                transportHeaderLength = tcpHeader.th_off * 4
                 sourcePort = ntohs(tcpHeader.th_sport).toInt()
                 destPort = ntohs(tcpHeader.th_dport).toInt()
+                tcpWindowSize = ntohs(tcpHeader.th_win).toInt()
                 
                 val flags = tcpHeader.th_flags
                 tcpFlags = TcpFlags(
-                    syn = (flags.toInt() and 0x02) != 0,
-                    ack = (flags.toInt() and 0x10) != 0,
                     fin = (flags.toInt() and 0x01) != 0,
+                    syn = (flags.toInt() and 0x02) != 0,
                     rst = (flags.toInt() and 0x04) != 0,
                     psh = (flags.toInt() and 0x08) != 0,
-                    urg = (flags.toInt() and 0x20) != 0
+                    ack = (flags.toInt() and 0x10) != 0,
+                    urg = (flags.toInt() and 0x20) != 0,
+                    ece = (flags.toInt() and 0x40) != 0,
+                    cwe = (flags.toInt() and 0x80) != 0
                 )
             }
             IPPROTO_UDP -> {
                 if (packetSize < ETHERNET_HEADER_SIZE + ipHeaderLength + sizeOf<udp_header>()) return null
                 val udpHeader = transportPacketPtr.reinterpret<udp_header>().pointed
+                transportHeaderLength = 8
                 sourcePort = ntohs(udpHeader.uh_sport).toInt()
                 destPort = ntohs(udpHeader.uh_dport).toInt()
             }
@@ -107,7 +121,6 @@ object PacketParser {
         }
 
         return ParsedPacket(
-            // ИСПРАВЛЕНИЕ: Преобразуем оба поля времени в Long
             timestampSeconds = pktHeader.ts.tv_sec.toLong(),
             timestampMicros = pktHeader.ts.tv_usec.toLong(),
             sourceIp = sourceIp,
@@ -116,7 +129,10 @@ object PacketParser {
             destPort = destPort,
             protocol = protocol,
             packetSize = packetSize,
-            tcpFlags = tcpFlags
+            tcpFlags = tcpFlags,
+            ipHeaderLength = ipHeaderLength,
+            transportHeaderLength = transportHeaderLength,
+            tcpWindowSize = tcpWindowSize
         )
     }
 

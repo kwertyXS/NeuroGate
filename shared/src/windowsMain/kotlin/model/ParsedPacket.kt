@@ -9,7 +9,10 @@ data class ParsedPacket(
     val destPort: Int,
     val protocol: Int,
     val packetSize: Int,
-    val tcpFlags: TcpFlags
+    val tcpFlags: TcpFlags,
+    val ipHeaderLength: Int,
+    val transportHeaderLength: Int,
+    val tcpWindowSize: Int
 )
 
 data class TcpFlags(
@@ -18,5 +21,7 @@ data class TcpFlags(
     val fin: Boolean = false,
     val rst: Boolean = false,
     val psh: Boolean = false,
-    val urg: Boolean = false
+    val urg: Boolean = false,
+    val cwe: Boolean = false,
+    val ece: Boolean = false
 )
