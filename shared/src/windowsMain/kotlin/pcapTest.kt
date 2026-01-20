@@ -5,6 +5,7 @@ import kotlinx.cinterop.staticCFunction
 import parser.PacketParser
 import platform.posix.SIGINT
 import platform.posix.signal
+import utils.DatasetProcessor
 
 private var globalCapturer: PcapCapturer? = null
 
@@ -18,9 +19,12 @@ private fun shutdownHook(signal: Int) {
 fun main() {
     println("Запуск анализатора трафика...")
 
+    val outputCsvPath = "traffic_log.csv"
+    val processedCsvPath = "processed_traffic_log.csv"
+
     // Создаем трекер, указываем имя файла и таймаут потока в 15 секунд
     val flowTracker = FlowTracker(
-        outputCsvPath = "traffic_log.csv",
+        outputCsvPath = outputCsvPath,
         flowTimeoutSeconds = 15
     )
 
@@ -39,6 +43,13 @@ fun main() {
     } finally {
         println("Блок finally: сохраняем оставшиеся данные.")
         flowTracker.flushAll()
+        println("Захваченные данные сохранены в $outputCsvPath")
+
+        println("Начинается обработка датасета...")
+        val processor = DatasetProcessor(outputCsvPath, processedCsvPath)
+        processor.process()
+        println("Обработанные данные сохранены в $processedCsvPath")
+
         println("Программа завершена.")
     }
 }
