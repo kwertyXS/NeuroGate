@@ -1,47 +1,31 @@
 import capture.PcapCapturer
 import flow.FlowTracker
 import kotlinx.cinterop.*
-import model.OnnxModel
 import parser.PacketParser
-import platform.posix.getenv
 import platform.windows.CreateThread
 import platform.windows.INFINITE
 import platform.windows.LPTHREAD_START_ROUTINE
 import platform.windows.WaitForSingleObject
+import utils.DatasetProcessor
 
 @OptIn(ExperimentalForeignApi::class)
 fun main() = memScoped {
     println("Запуск анализатора трафика...")
 
-    val onnxModel = OnnxModel()
-    val appDataPath = getenv("APPDATA")?.toKString()
-    if (appDataPath != null) {
-        val modelPath = "$appDataPath/NeuroGate/model.onnx"
-        println("Загрузка модели из $modelPath")
-        onnxModel.loadModel(modelPath)
-    } else {
-        println("Переменная окружения APPDATA не найдена. Модель не будет загружена.")
-    }
+    val outputCsvPath = "traffic_log.csv"
+    val processedCsvPath = "processed_traffic_log.csv"
 
     val flowTracker = FlowTracker(
-        outputCsvPath = "processed_traffic_log.csv",
+        outputCsvPath = outputCsvPath,
         flowTimeoutSeconds = 15
-    ) { flow ->
-        val prediction = onnxModel.predict(flow)
-        println("Поток ${flow.flowId} завершен. Результат: $prediction")
-    }
-
-    val capturer = PcapCapturer(
-        onPacket = { header, packet ->
-            val parsedPacket = PacketParser.parse(header, packet)
-            if (parsedPacket != null) {
-                flowTracker.processPacket(parsedPacket)
-            }
-        },
-        onFlowFinished = { flow ->
-            flowTracker.onFlowFinished(flow)
-        }
     )
+
+    val capturer = PcapCapturer { header, packet ->
+        val parsedPacket = PacketParser.parse(header, packet)
+        if (parsedPacket != null) {
+            flowTracker.processPacket(parsedPacket)
+        }
+    }
 
     val stableRef = StableRef.create(capturer)
     val threadParam = stableRef.asCPointer()
@@ -75,12 +59,20 @@ fun main() = memScoped {
 
     stableRef.dispose()
     capturer.close()
-    onnxModel.close()
 
     println("Сохранение оставшихся данных...")
     flowTracker.flushAll()
     flowTracker.close()
-    println("Обработанные данные сохранены в processed_traffic_log.csv")
+    println("Захваченные данные сохранены в $outputCsvPath")
+
+    println("Начинается обработка датасета...")
+    try {
+        val processor = DatasetProcessor(outputCsvPath, processedCsvPath)
+        processor.process()
+        println("Обработанные данные сохранены в $processedCsvPath")
+    } catch (e: Exception) {
+        println("Произошла ошибка во время обработки датасета: ${e.message}")
+    }
 
     println("Программа завершена.")
 }

@@ -21,11 +21,6 @@ kotlin {
                     // Указываем cinterop, где искать заголовочные файлы
                     includeDirs("src/nativeInterop/cinterop/Include")
                 }
-                val onnx by creating {
-                    defFile("src/nativeInterop/cinterop/onnx.def")
-                    // packageName("onnx") // Убираем, чтобы избежать проблем с разрешением типов
-                    includeDirs("src/nativeInterop/cinterop/Include")
-                }
             }
         }
     }
@@ -44,12 +39,6 @@ kotlin {
     sourceSets {
         val windowsMain by getting
         val windowsTest by getting
-        
-        val jvmMain by getting {
-            dependencies {
-                implementation("com.microsoft.onnxruntime:onnxruntime:1.17.3")
-            }
-        }
 
         commonMain.dependencies {
             // put your Multiplatform dependencies here

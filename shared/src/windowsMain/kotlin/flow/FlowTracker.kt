@@ -8,8 +8,7 @@ import sync.withLock
 
 class FlowTracker(
     outputCsvPath: String,
-    private val flowTimeoutSeconds: Long = 60,
-    private val onFlowFinished: (Flow) -> Unit
+    private val flowTimeoutSeconds: Long = 60
 ) {
     private val activeFlows = mutableMapOf<String, Flow>()
     private val csvWriter = CsvWriter(outputCsvPath)
@@ -65,14 +64,10 @@ class FlowTracker(
     private fun exportAndRemoveFlow(flow: Flow, reason: String, logToConsole: Boolean = true) {
         if (logToConsole) {
             println("Поток завершен ($reason): ${flow.flowId}")
+            println("  - Итоговая статистика: $flow")
         }
-        onFlowFinished(flow)
         csvWriter.appendRow(flow.toCsvRow())
         activeFlows.remove(flow.flowId)
-    }
-    
-    fun onFlowFinished(flow: Flow) {
-        onFlowFinished.invoke(flow)
     }
 
     private fun generateFlowId(packet: ParsedPacket): String {
