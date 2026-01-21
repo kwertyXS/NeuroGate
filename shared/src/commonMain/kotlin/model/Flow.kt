@@ -60,13 +60,12 @@ class Flow(
 
     fun addPacket(packet: ParsedPacket) {
         val packetTime = packet.timestampSeconds * 1_000_000L + packet.timestampMicros
-        
+        packetTimestamps.add(packetTime)
+
         if (lastPacketTime > 0) {
             flowIATs.add(packetTime - lastPacketTime)
         }
         lastPacketTime = packetTime
-        packetTimestamps.add(packetTime)
-
 
         val isForward = packet.sourceIp == sourceIp && packet.sourcePort == sourcePort
         if (isForward) { // Пакет "туда" (Forward)
@@ -170,7 +169,7 @@ class Flow(
     }
 
 
-    fun toCsvRow(label: String? = null): String {
+    fun toCsvRow(): String {
         val durationMicro = if (lastPacketTime > startTime) lastPacketTime - startTime else 0
         val durationSec = durationMicro / 1_000_000.0
 
@@ -211,7 +210,7 @@ class Flow(
         val formattedTimestamp = "${timestamp.date} ${timestamp.time.hour}:${timestamp.time.minute}:${timestamp.time.second}.${timestamp.time.nanosecond / 1000}"
 
 
-        val values = mutableListOf<Any?>(
+        val values = listOf(
             flowId, sourceIp, sourcePort, destIp, destPort, protocol,
             formattedTimestamp,
             durationMicro, totalFwdPackets, totalBwdPackets,
@@ -234,11 +233,9 @@ class Flow(
             initWinBytesForward, initWinBytesBackward,
             actDataPktFwd, if (minSegSizeForward == Int.MAX_VALUE) 0 else minSegSizeForward,
             activeIdleStats["active_mean"], activeIdleStats["active_std"], activeIdleStats["active_max"], activeIdleStats["active_min"],
-            activeIdleStats["idle_mean"], activeIdleStats["idle_std"], activeIdleStats["idle_max"], activeIdleStats["idle_min"]
+            activeIdleStats["idle_mean"], activeIdleStats["idle_std"], activeIdleStats["idle_max"], activeIdleStats["idle_min"],
+            "BENIGN" // Label
         )
-        if (label != null) {
-            values.add(label)
-        }
         return values.joinToString(",")
     }
 

@@ -5,27 +5,6 @@ plugins {
 }
 
 kotlin {
-    // --- Конфигурация для Windows ---
-    mingwX64("windows") {
-        binaries.all {
-            // Указываем линковщику путь к 64-битным библиотекам
-            linkerOpts.add("-L${project.projectDir}/src/nativeInterop/cinterop/Lib/x64")
-        }
-        binaries.executable {
-            entryPoint = "main"
-        }
-        compilations.getByName("main") {
-            cinterops {
-                val pcap by creating {
-                    defFile("src/nativeInterop/cinterop/pcap.def")
-                    // Указываем cinterop, где искать заголовочные файлы
-                    includeDirs("src/nativeInterop/cinterop/Include")
-                }
-            }
-        }
-    }
-
-    // --- Остальные платформы ---
     jvm()
     js {
         browser()
@@ -35,13 +14,8 @@ kotlin {
         browser()
     }
 
-    // --- Общие зависимости ---
     sourceSets {
-        val windowsMain by getting
-        val windowsTest by getting
-
         commonMain.dependencies {
-            // put your Multiplatform dependencies here
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
         }
         commonTest.dependencies {
@@ -50,6 +24,13 @@ kotlin {
         
         jvmMain.dependencies {
             implementation("com.microsoft.onnxruntime:onnxruntime:1.18.0")
+            // --- Pcap4j (стабильная версия) ---
+//            implementation("org.pcap4j:pcap4j-core:1.8.2")
+//
+            implementation("org.pcap4j:pcap4j-core:1.8.1") // основной
+            implementation("org.pcap4j:pcap4j-packetfactory-static:1.8.1") // packet factories
+
+
         }
     }
 }
