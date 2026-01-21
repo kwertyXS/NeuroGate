@@ -42,7 +42,7 @@ fun main() {
         println("Не удалось программно найти интерфейс: ${e.message}")
         exitProcess(1)
     }
-
+    // dssds
     println("Выбранный интерфейс: ${nif.name} (${nif.description})")
 
     val handle = nif.openLive(65536, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, 10)
