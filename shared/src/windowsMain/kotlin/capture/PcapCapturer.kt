@@ -1,7 +1,10 @@
 package capture
 
 import kotlinx.cinterop.*
+import model.Flow
+import model.OnnxModel
 import pcap.*
+import platform.posix.getenv
 import platform.posix.u_charVar
 
 @OptIn(ExperimentalForeignApi::class)
@@ -12,10 +15,23 @@ private fun packetHandler(user: CPointer<u_charVar>?, header: CPointer<pcap_pkth
 }
 
 @OptIn(ExperimentalForeignApi::class)
-class PcapCapturer(internal val onPacket: (CPointer<pcap_pkthdr>, CPointer<u_charVar>) -> Unit) {
+class PcapCapturer(
+    internal val onPacket: (CPointer<pcap_pkthdr>, CPointer<u_charVar>) -> Unit,
+    private val onFlowFinished: (Flow) -> Unit
+) {
 
     private var pcapHandle: CPointer<pcap_t>? = null
     private var userStableRef: StableRef<PcapCapturer>? = null
+    private val onnxModel = OnnxModel()
+
+    init {
+        val appDataPath = getenv("APPDATA")?.toKString()
+        if (appDataPath != null) {
+            onnxModel.loadModel("$appDataPath/NeuroGate/model.onnx")
+        } else {
+            println("APPDATA environment variable not found. Model not loaded.")
+        }
+    }
 
     fun startCapture() {
         val errbuf = nativeHeap.allocArray<ByteVar>(PCAP_ERRBUF_SIZE)
@@ -46,6 +62,7 @@ class PcapCapturer(internal val onPacket: (CPointer<pcap_pkthdr>, CPointer<u_cha
     fun close() {
         pcapHandle?.let { pcap_close(it) }
         userStableRef?.dispose()
+        onnxModel.close()
         println("\nЗахват остановлен.")
     }
 
@@ -68,5 +85,11 @@ class PcapCapturer(internal val onPacket: (CPointer<pcap_pkthdr>, CPointer<u_cha
 
         pcap_freealldevs(alldevs.value)
         return targetDeviceName
+    }
+
+    fun handleFlow(flow: Flow) {
+        val prediction = onnxModel.predict(flow)
+        println("Flow ${flow.flowId} finished. Prediction: $prediction")
+        onFlowFinished(flow)
     }
 }

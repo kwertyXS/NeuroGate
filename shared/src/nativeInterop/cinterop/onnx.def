@@ -1,0 +1,7 @@
+headers = onnxruntime_c_api.h
+headerFilter = onnxruntime_c_api.h
+
+staticLibraries = onnxruntime.lib
+libraryPaths = C:/Users/kwert/IdeaProjects/NeuroGate/shared/src/nativeInterop/cinterop/Lib/x64
+compilerOpts = -DONNX_RUNTIME_DLL_IMPORT
+linkerOpts = onnxruntime.dll
