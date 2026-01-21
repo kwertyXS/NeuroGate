@@ -3,21 +3,22 @@ package flow
 import export.CsvWriter
 import model.Flow
 import model.ParsedPacket
+import sync.Mutex
+import sync.withLock
 
 class FlowTracker(
     outputCsvPath: String,
-    // Таймаут в секундах. Если по потоку нет пакетов дольше этого времени, он завершается.
     private val flowTimeoutSeconds: Long = 60
 ) {
     private val activeFlows = mutableMapOf<String, Flow>()
     private val csvWriter = CsvWriter(outputCsvPath)
+    private val mutex = Mutex() // Мьютекс для защиты activeFlows
 
     init {
         csvWriter.writeHeader(Flow.getCsvHeader())
     }
 
-    fun processPacket(packet: ParsedPacket) {
-        // --- НОВЫЙ КОД: Проверяем старые потоки перед обработкой нового ---
+    fun processPacket(packet: ParsedPacket) = mutex.withLock {
         checkForTimedOutFlows(packet.timestampSeconds)
 
         val flowId = generateFlowId(packet)
@@ -27,17 +28,22 @@ class FlowTracker(
         }
         flow.addPacket(packet)
 
-        // Завершаем по FIN/RST, если они есть
         if (packet.tcpFlags.fin || packet.tcpFlags.rst) {
             exportAndRemoveFlow(flow, "FIN/RST")
         }
     }
 
-    fun flushAll() {
+    fun flushAll() = mutex.withLock {
         println("Принудительное завершение и сохранение ${activeFlows.size} активных потоков...")
-        activeFlows.values.forEach { exportAndRemoveFlow(it, "FORCE", false) }
+        // Создаем копию, чтобы избежать ConcurrentModificationException
+        val flowsToFlush = activeFlows.values.toList()
+        flowsToFlush.forEach { exportAndRemoveFlow(it, "FORCE", false) }
         activeFlows.clear()
         println("Сохранение завершено.")
+    }
+
+    fun close() {
+        mutex.close()
     }
 
     private fun checkForTimedOutFlows(currentTimeSeconds: Long) {

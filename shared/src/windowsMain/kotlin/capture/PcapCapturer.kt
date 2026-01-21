@@ -3,19 +3,13 @@ package capture
 import kotlinx.cinterop.*
 import pcap.*
 import platform.posix.u_charVar
-import kotlin.system.exitProcess
 
-// --- ИСПРАВЛЕНИЕ: Выносим колбэк на верхний уровень файла ---
 @OptIn(ExperimentalForeignApi::class)
 private fun packetHandler(user: CPointer<u_charVar>?, header: CPointer<pcap_pkthdr>?, packet: CPointer<u_charVar>?) {
     if (user == null || header == null || packet == null) return
-
-    // Преобразуем CPointer обратно в наш класс Capturer
     val capturer = user.asStableRef<PcapCapturer>().get()
-    // Вызываем лямбду, которую нам передали в конструкторе
     capturer.onPacket(header, packet)
 }
-
 
 @OptIn(ExperimentalForeignApi::class)
 class PcapCapturer(internal val onPacket: (CPointer<pcap_pkthdr>, CPointer<u_charVar>) -> Unit) {
@@ -31,33 +25,35 @@ class PcapCapturer(internal val onPacket: (CPointer<pcap_pkthdr>, CPointer<u_cha
         pcapHandle = pcap_open_live(deviceName, 65535, 1, 1000, errbuf)
         if (pcapHandle == null) {
             println("Ошибка открытия устройства: ${errbuf.toKString()}")
-            exitProcess(1)
+            return
         }
 
-        println("Захват начат... (Нажмите Ctrl+C для остановки)")
-
-        // Теперь staticCFunction ссылается на настоящую статическую функцию
+        println("Захват начат...")
         val callback = staticCFunction(::packetHandler)
         userStableRef = StableRef.create(this)
         val user = userStableRef!!.asCPointer()
 
         pcap_loop(pcapHandle, -1, callback, user.reinterpret())
+        println("pcap_loop завершен.")
     }
 
-    fun stopCapture() {
-        pcapHandle?.let {
-            pcap_breakloop(it)
-            pcap_close(it)
-        }
+    // Прерывает pcap_loop. Безопасно для вызова из другого потока.
+    fun breakLoop() {
+        pcapHandle?.let { pcap_breakloop(it) }
+    }
+
+    // Освобождает ресурсы. Вызывать после завершения потока.
+    fun close() {
+        pcapHandle?.let { pcap_close(it) }
         userStableRef?.dispose()
         println("\nЗахват остановлен.")
     }
 
-    private fun findDevice(errbuf: CArrayPointer<ByteVar>): String {
+    private fun findDevice(errbuf: CArrayPointer<ByteVar>): String? {
         val alldevs = nativeHeap.alloc<CPointerVar<pcap_if>>()
         if (pcap_findalldevs(alldevs.ptr, errbuf) != 0) {
             println("Ошибка поиска устройств: ${errbuf.toKString()}")
-            exitProcess(1)
+            return null
         }
 
         var device: pcap_if_t? = alldevs.value?.pointed
@@ -71,9 +67,6 @@ class PcapCapturer(internal val onPacket: (CPointer<pcap_pkthdr>, CPointer<u_cha
         }
 
         pcap_freealldevs(alldevs.value)
-        return targetDeviceName ?: run {
-            println("Подходящее устройство не найдено.")
-            exitProcess(1)
-        }
+        return targetDeviceName
     }
 }

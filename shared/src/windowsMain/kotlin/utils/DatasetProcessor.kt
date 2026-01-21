@@ -32,7 +32,9 @@ class DatasetProcessor(private val inputCsvPath: String, private val outputCsvPa
             // Process timestamp
             row["Timestamp"]?.let { timestamp ->
                 try {
-                    val instant = Instant.parse(timestamp.trim())
+                    // Приводим время к стандарту ISO 8601 (заменяем пробел на 'T' и добавляем 'Z')
+                    val isoTimestamp = timestamp.trim().replace(' ', 'T') + "Z"
+                    val instant = Instant.parse(isoTimestamp)
                     val dateTime = instant.toLocalDateTime(TimeZone.UTC)
 
                     val minutes = dateTime.hour * 60 + dateTime.minute
