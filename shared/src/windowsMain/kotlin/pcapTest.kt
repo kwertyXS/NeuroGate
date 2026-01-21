@@ -6,14 +6,12 @@ import platform.windows.CreateThread
 import platform.windows.INFINITE
 import platform.windows.LPTHREAD_START_ROUTINE
 import platform.windows.WaitForSingleObject
-import utils.DatasetProcessor
 
 @OptIn(ExperimentalForeignApi::class)
 fun main() = memScoped {
     println("Запуск анализатора трафика...")
 
     val outputCsvPath = "traffic_log.csv"
-    val processedCsvPath = "processed_traffic_log.csv"
 
     val flowTracker = FlowTracker(
         outputCsvPath = outputCsvPath,
@@ -64,15 +62,6 @@ fun main() = memScoped {
     flowTracker.flushAll()
     flowTracker.close()
     println("Захваченные данные сохранены в $outputCsvPath")
-
-    println("Начинается обработка датасета...")
-    try {
-        val processor = DatasetProcessor(outputCsvPath, processedCsvPath)
-        processor.process()
-        println("Обработанные данные сохранены в $processedCsvPath")
-    } catch (e: Exception) {
-        println("Произошла ошибка во время обработки датасета: ${e.message}")
-    }
 
     println("Программа завершена.")
 }

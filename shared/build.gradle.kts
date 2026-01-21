@@ -47,5 +47,9 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+        
+        jvmMain.dependencies {
+            implementation("com.microsoft.onnxruntime:onnxruntime:1.18.0")
+        }
     }
 }
