@@ -1,2 +1,0 @@
-headers = pcap.h
-linkerOpts = -lwpcap -lPacket
