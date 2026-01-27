@@ -4,9 +4,6 @@ import model.ParsedPacket
 import model.TcpFlags
 import org.pcap4j.core.*
 import org.pcap4j.packet.*
-import org.pcap4j.packet.factory.PacketFactories
-import org.pcap4j.packet.namednumber.DataLinkType
-import org.pcap4j.util.NifSelector
 import ru.kwerty.neurogate.OnnxInference
 import java.io.File
 import java.io.IOException
@@ -24,7 +21,7 @@ fun main() {
     if (configFile.exists()) {
         configFile.reader(Charsets.UTF_8).use { reader -> properties.load(reader) }
     }
-    val modelPath = properties.getProperty("model_path", "model.onnx")
+    val modelPath = properties.getProperty("model_path", "C:\\Users\\kwert\\AppData\\Roaming\\NeuroGate\\model.onnx")
     println("Загрузка модели из: $modelPath")
     val onnxInference = OnnxInference(modelPath)
 
